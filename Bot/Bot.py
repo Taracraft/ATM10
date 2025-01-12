@@ -3,13 +3,6 @@ import logging.handlers
 
 import discord
 
-# Intents
-intents = discord.Intents.all()
-intents.members = True
-intents.messages = True
-intents.presences = True
-client = discord.Client(intents=intents)
-
 # Logging
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
@@ -26,7 +19,15 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 #Config
-Botlog = "1327954289670361109"
+
+intents = discord.Intents.all()
+client = discord.Client(intents=intents)
+intents.members = True
+intents.messages = True
+intents.presences = True
+
+client = discord.Client(intents=intents)
+Botlog = 1327954289670361109
 Token = ""
 
 async def status_task():
@@ -82,7 +83,5 @@ async def on_ready():
         print(f"Connected to server: {guild}")
     print("------")
     client.loop.create_task(status_task())
-
-# Replace with your actual bot token
 
 client.run(Token)
