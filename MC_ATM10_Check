@@ -1,0 +1,57 @@
+#!/bin/bash
+# /etc/init.d/MC_ATM10_Check
+
+### BEGIN INIT INFO
+# Provides:          MC_ATM10_Check
+# Required-Start:    $local_fs $network
+# Required-Stop:     $local_fs $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Überprüft und beendet eine Screen-Sitzung alle 6 Stunden
+### END INIT INFO
+
+SCREEN_SESSION="MC_ATM10"
+SCREEN_USER="mc"
+STOP_COMMAND="screen -S $SCREEN_SESSION -X quit"
+CHECK_COMMAND="screen -list | grep -q $SCREEN_SESSION"
+USER_COMMAND="ps -eo user,comm | grep 'SCREEN' | grep -w $SCREEN_SESSION | awk '{print \$1}'"
+
+case "$1" in
+  start)
+    echo "Starte die ueberpruefung der Screen-Sitzung..."
+    ;;
+  stop)
+    echo "Beende die Screen-Sitzung, wenn sie laeuft..."
+    if su - $SCREEN_USER -c "$CHECK_COMMAND"; then
+      echo "Screen-Sitzung $SCREEN_SESSION laeuft, beende sie..."
+      su - $SCREEN_USER -c "$STOP_COMMAND"
+      if [ $? -eq 0 ]; then
+        echo "Screen-Sitzung $SCREEN_SESSION erfolgreich beendet."
+      else
+        echo "Fehler beim Beenden der Screen-Sitzung $SCREEN_SESSION."
+      fi
+    else
+      echo "Screen-Sitzung $SCREEN_SESSION laeuft nicht."
+    fi
+    ;;
+  status)
+    if su - $SCREEN_USER -c "$CHECK_COMMAND"; then
+      echo "Die Screen-Sitzung $SCREEN_SESSION laeuft."
+      USER=$(su - $SCREEN_USER -c "$USER_COMMAND")
+      if [ -z "$USER" ]; then
+        echo "Benutzer konnte nicht ermittelt werden."
+      else
+        echo "Die Screen-Sitzung $SCREEN_SESSION wird von Benutzer $USER ausgefuehrt."
+      fi
+      su - $SCREEN_USER -c "screen -list | grep $SCREEN_SESSION"
+    else
+      echo "Die Screen-Sitzung $SCREEN_SESSION läuft nicht."
+    fi
+    ;;
+  *)
+    echo "Usage: /etc/init.d/MC_ATM10_Check {start|stop|status}"
+    exit 1
+    ;;
+esac
+
+exit 0
