@@ -25,7 +25,7 @@ Dieses Skript ist ein Init-Skript für einen Minecraft-Server (MC_ATM10). Es erm
 - Alle Dateien, Backups und Logs werden in einem einstellbaren Minecraft-Pfad (`$MCPATH`) abgelegt.
 
 > 💡 Das Startskript befindet sich im Unterordner [`Linux/MC_ATM10`](Linux/MC_ATM10)  
-> 💡 Beispiel Cronjobs befindet sich im Unterordner [`Linux/Cronjob`](Linux/Cronjob)
+> 💡 Beispiel Cronjobs befindet sich im Unterordner [`Linux/Cronjob`](Linux/Cronjob)  
 > 💡 Beispiel Systemd Dienst befindet sich im Unterordner [`Linux/mc_atm10.service`](Linux/mc_atm10.service)
 
 ---
