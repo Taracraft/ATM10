@@ -22,7 +22,7 @@ Dieses Skript ist ein Init-Skript für einen Minecraft-Server (MC_ATM10). Es erm
 - Logrotation für Debug- und Serverlogs  
 - Farbig formatierte Ingame-Meldungen  
 - Du brauchst Screen um das Skript auszuführen. mit apt install screen kannst du dies z.b. auf Debian/Ubunto installieren
-Alle Dateien, Backups und Logs werden in einem einstellbaren Minecraft-Pfad (`$MCPATH`) abgelegt.
+- Alle Dateien, Backups und Logs werden in einem einstellbaren Minecraft-Pfad (`$MCPATH`) abgelegt.
 
 > 💡 Das Startskript befindet sich im Unterordner [`Linux/MC_ATM10`](Linux/MC_ATM10)
 
