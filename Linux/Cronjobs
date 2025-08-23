@@ -1,0 +1,6 @@
+# Restart alle 6 Stunden
+0 */6 * * * /etc/init.d/MC_ATM10 restart > /home/mc/ATM10/logs/restart.log >/dev/null 2>&1 #MC_ATM10 Restart
+# Stündliches inkrementelles Backup
+0 * * * * /etc/init.d/ATM10/MC_ATM10 backup > /home/mc/ATM10/logs/backup.log >/dev/null 2>&1 #MC_ATM10 Stündliches Backup
+# Optional: tägliches Vollbackup um 03:00 Uhr (falls dein Skript es nicht automatisch prüft)
+0 3 * * * /etc/init.d/ATM10/MC_ATM10 backup > /home/mc/ATM10/logs/backup.log >/dev/null 2>&1 #MC_ATM10 Tägliches Backup
