@@ -1,0 +1,321 @@
+#!/bin/bash
+# /etc/init.d/MC_ATM10
+# Version 1.5-clean 2025-08-23
+
+################################################################################
+# Autor: Thomas Faßbender
+# Ingame Name: Taracraft
+# E-Mail: Tara@Bad-Timing.eu
+# Minecraft Server: Bad-Timing.eu
+# 
+# Lizenz (Deutsch):
+# Dieses Werk ist lizenziert unter einer
+# Creative Commons Namensnennung - Nicht-kommerziell 4.0 International Lizenz (CC BY-NC 4.0).
+# https://creativecommons.org/licenses/by-nc/4.0/
+#
+# Du darfst:
+# - Teilen — das Material in jedwedem Format oder Medium vervielfältigen und weiterverbreiten
+# - Bearbeiten — das Material remixen, verändern und darauf aufbauen
+#
+# Unter folgenden Bedingungen:
+# - Namensnennung — Du musst angemessene Urheber- und Rechteangaben machen,
+#   einen Link zur Lizenz beifügen und angeben, ob Änderungen vorgenommen wurden.
+# - Nicht kommerziell — Du darfst das Material nicht für kommerzielle Zwecke nutzen.
+#
+# Keine weiteren Einschränkungen — Du darfst keine zusätzlichen Klauseln oder
+# technischen Verfahren einsetzen, die anderen rechtlich irgendetwas untersagen,
+# was die Lizenz erlaubt.
+################################################################################
+### BEGIN INIT INFO
+# Provides:          minecraft
+# Required-Start:    $local_fs $remote_fs screen-cleanup
+# Required-Stop:     $local_fs $remote_fs
+# Should-Start:      $network
+# Should-Stop:       $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Minecraft server
+# Description:       Starts the minecraft server
+### END INIT INFO
+
+# ==========================
+# Settings
+# ==========================
+SERVICE='startserver.sh'
+SCREENNAME='MC_ATM10'
+USERNAME='mc'
+SERVER_NAME='Bad-Timing-ATM10'            # Servername für Ingame-Meldungen
+WORLD='Tara'
+MCPATH='/home/mc/ATM10/'
+BACKUPPATH_HOURLY="$MCPATH/Backup/hourly/"
+BACKUPPATH_DAILY="$MCPATH/Backup/daily/"
+HISTORY=2048
+CPU_COUNT=4
+MINHEAP=6
+MAXHEAP=8
+OPTIONS='nogui'
+INVOCATION="java -Xms${MINHEAP}G -Xmx${MAXHEAP}G -jar $SERVICE $OPTIONS"
+MIN_FREE_MB=1024
+
+# Logs & Rotation im Minecraft-Verzeichnis
+LOGS_DIR="$MCPATH/logs"
+DEBUG_LOG="$LOGS_DIR/debug.log"
+DEBUG_LOG_RETENTION_DAYS=7
+SERVER_LOG_RETENTION_DAYS=30
+
+ME=$(whoami)
+
+# ==========================
+# Helpers
+# ==========================
+log() {
+  local ts; ts="$(date '+%Y-%m-%d %H:%M:%S')"
+  echo "[$ts] $*"
+  [ -d "$LOGS_DIR" ] || mkdir -p "$LOGS_DIR"
+  if [ -w "$DEBUG_LOG" ] || touch "$DEBUG_LOG" >/dev/null 2>&1; then
+    echo "[$ts] $*" >> "$DEBUG_LOG"
+  fi
+}
+
+as_user() {
+  if [ "$ME" = "$USERNAME" ]; then
+    bash -lc "$1"
+  else
+    su - "$USERNAME" -c "$1"
+  fi
+}
+
+mc_tell() {
+  local color="$1"; shift
+  local msg="$*"
+  local esc="${msg//\\/\\\\}"; esc="${esc//\"/\\\"}"
+  local json="[{\"text\":\"[$SERVER_NAME] \",\"color\":\"gold\"},{\"text\":\"${esc}\",\"color\":\"${color}\"}]"
+  as_user "screen -p 0 -S ${SCREENNAME} -X stuff \"tellraw @a ${json//\"/\\\"}\015\""
+}
+
+ensure_dir() {
+  local dir="$1" label="$2"
+  [ -z "$dir" ] && log "[ERROR] $label: empty path" && return 1
+  [ -e "$dir" ] && [ ! -d "$dir" ] && log "[ERROR] $label: not a directory" && return 1
+  [ ! -d "$dir" ] && mkdir -p "$dir" 2>/dev/null && log "[INFO] Created $label: $dir"
+  local testfile="$dir/.write_test.$$"
+  if ! ( : > "$testfile" ) 2>/dev/null; then log "[ERROR] $label: not writable"; return 1; fi
+  rm -f "$testfile"
+  local free_mb=$(df -Pm "$dir" 2>/dev/null | awk 'NR==2{print $4}')
+  [ -n "$free_mb" ] && [ "$free_mb" -lt "$MIN_FREE_MB" ] && log "[ERROR] $label: low disk space ($free_mb MB)"
+  return 0
+}
+
+server_running() { pgrep -u "$USERNAME" -f "$SERVICE" >/dev/null 2>&1; }
+
+# ==========================
+# Logrotation
+# ==========================
+rotate_logs() {
+  ensure_dir "$LOGS_DIR" "Logs directory" || return 1
+
+  # Debug-Logs
+  if [ -f "$DEBUG_LOG" ]; then
+    gzip -c "$DEBUG_LOG" > "${DEBUG_LOG%.log}-$(date '+%Y-%m-%d').log.gz"
+    : > "$DEBUG_LOG"
+  fi
+
+  # Server-Logs
+  for file in "$LOGS_DIR"/*.log; do
+    [ -f "$file" ] || continue
+    gzip -c "$file" > "${file%.log}-$(date '+%Y-%m-%d').log.gz"
+    : > "$file"
+  done
+
+  find "$LOGS_DIR" -type f -name "*.log.gz" -mtime +$DEBUG_LOG_RETENTION_DAYS -exec rm -f {} \;
+  find "$LOGS_DIR" -type f -name "*.log.gz" -mtime +$SERVER_LOG_RETENTION_DAYS -exec rm -f {} \;
+
+  log "[LOGROTATE] Logs rotated in $LOGS_DIR"
+}
+
+# ==========================
+# Start/Stop
+# ==========================
+mc_start() {
+  if server_running; then
+    log "[INFO] $SERVICE already running"
+  else
+    log "[ACTION] Starting $SERVICE"
+    cd "$MCPATH" || { log "[ERROR] MCPATH not found"; return 1; }
+    as_user "screen -h $HISTORY -dmS ${SCREENNAME} $INVOCATION"
+    sleep 7
+    if server_running; then
+      log "[OK] $SERVICE started"
+      mc_tell yellow "Server started"
+    else
+      log "[ERROR] Start failed"
+      mc_tell red "Server failed to start"
+    fi
+  fi
+}
+
+mc_stop() {
+  if server_running; then
+    for i in 10 5 1; do mc_tell yellow "Shutdown in $i minutes"; sleep $((i*60)); done
+    for i in 30 10 9 8 7 6 5 4 3 2 1; do mc_tell yellow "Shutdown in $i seconds"; sleep 1; done
+    mc_tell yellow "Saving world..."
+    as_user "screen -p 0 -S ${SCREENNAME} -X stuff \"save-all\015\""
+    sleep 1
+    as_user "screen -p 0 -S ${SCREENNAME} -X stuff \"stop\015\""
+    log "[ACTION] Stop command sent"
+  else
+    log "[INFO] $SERVICE not running"
+  fi
+}
+
+# ==========================
+# Save Toggle
+# ==========================
+mc_saveoff() { server_running && mc_tell yellow "Starting backup... server read-only" && as_user "screen -p 0 -S ${SCREENNAME} -X stuff \"save-off\015\"; screen -p 0 -S ${SCREENNAME} -X stuff \"save-all\015\""; sleep 5; }
+mc_saveon() { server_running && as_user "screen -p 0 -S ${SCREENNAME} -X stuff \"save-on\015\"" && mc_tell green "Backup completed, server read-write"; }
+
+# ==========================
+# Hourly Backup
+# ==========================
+mc_backup_hourly() {
+  rotate_logs
+  local NOW BACKUP_FILE SNAPSHOT_FILE
+  NOW=$(date "+%Y-%m-%d_%Hh%M")
+  BACKUP_FILE="$BACKUPPATH_HOURLY/${WORLD}_${NOW}.tar"
+  SNAPSHOT_FILE="$BACKUPPATH_HOURLY/${WORLD}_snapshot.snar"
+
+  ensure_dir "$BACKUPPATH_HOURLY" "Hourly backup dir" || { mc_tell red "Hourly dir not usable"; return 1; }
+
+  mc_tell gold "-----------"
+  mc_tell yellow "Starting hourly backup..."
+  mc_tell gold "-----------"
+  log "[ACTION] Hourly backup -> $BACKUP_FILE"
+
+  mc_saveoff
+  as_user "tar --listed-incremental=\"$SNAPSHOT_FILE\" -C \"$MCPATH\" -cf \"$BACKUP_FILE\" \"$WORLD\" \"$SERVICE\""
+  mc_tell aqua "Compressing..."
+  gzip -f "$BACKUP_FILE"
+  mc_saveon
+
+  find "$BACKUPPATH_HOURLY" -type f -name "${WORLD}_*.tar.gz" -mmin +1440 -exec rm -f {} \;
+  mc_tell gold "----------- Hourly backup finished -----------"
+  log "[OK] Hourly backup finished"
+}
+
+# ==========================
+# Daily Backup
+# ==========================
+mc_backup_daily() {
+  local TODAY BACKUP_FILE
+  TODAY=$(date "+%Y-%m-%d")
+  BACKUP_FILE="$BACKUPPATH_DAILY/${WORLD}_${TODAY}.tar"
+
+  ensure_dir "$BACKUPPATH_DAILY" "Daily backup dir" || { mc_tell red "Daily dir not usable"; return 1; }
+
+  mc_tell gold "-----------"
+  mc_tell yellow "Starting daily backup..."
+  mc_tell gold "-----------"
+  log "[ACTION] Daily backup -> $BACKUP_FILE"
+
+  mc_saveoff
+  as_user "tar -C \"$MCPATH\" -cf \"$BACKUP_FILE\" \"$WORLD\" \"$SERVICE\""
+  mc_tell aqua "Compressing..."
+  gzip -f "$BACKUP_FILE"
+  mc_saveon
+
+  find "$BACKUPPATH_DAILY" -type f -name "${WORLD}_*.tar.gz" -mtime +30 -exec rm -f {} \;
+  mc_tell gold "----------- Daily backup finished -----------"
+  log "[OK] Daily backup finished"
+}
+
+# ==========================
+# Backup Wrapper
+# ==========================
+mc_backup() {
+  rotate_logs
+  mc_backup_hourly
+  [ ! -f "$BACKUPPATH_DAILY/${WORLD}_$(date "+%Y-%m-%d").tar.gz" ] && mc_backup_daily || log "[INFO] Daily backup exists"
+}
+
+# ==========================
+# Rollback
+# ==========================
+mc_rollback() {
+  mc_tell gold "-----------"
+  mc_tell yellow "Starting rollback..."
+  mc_tell gold "-----------"
+
+  echo "Select backup type:"
+  echo "[1] Hourly (incremental)"
+  echo "[2] Daily (full)"
+  read -r TYPE
+
+  local BACKUP_DIR
+  case "$TYPE" in
+    1) BACKUP_DIR="$BACKUPPATH_HOURLY" ;;
+    2) BACKUP_DIR="$BACKUPPATH_DAILY" ;;
+    *) echo "Invalid"; mc_tell red "Invalid"; return 1 ;;
+  esac
+
+  mapfile -t BACKUPS < <(ls -1 "$BACKUP_DIR"/*.tar.gz 2>/dev/null | sort)
+  [ "${#BACKUPS[@]}" -eq 0 ] && echo "No backups" && mc_tell red "No backups found" && return 1
+
+  echo "Available backups:"
+  for i in "${!BACKUPS[@]}"; do echo "[$i] $(basename "${BACKUPS[$i]}")"; done
+  read -r INDEX
+  [ "$INDEX" -ge "${#BACKUPS[@]}" ] && echo "Invalid" && mc_tell red "Invalid" && return 1
+
+  local SELECTED="${BACKUPS[$INDEX]}"
+  local BASENAME="$(basename "$SELECTED")"
+
+  mc_tell gold "-----------"
+  mc_tell yellow "Restoring $BASENAME..."
+  mc_tell gold "-----------"
+
+  mc_stop
+  sleep 5
+  as_user "tar -C \"$MCPATH\" -xzf \"$SELECTED\""
+  mc_start
+  mc_tell green "Rollback completed: $BASENAME"
+  log "[OK] Restored $BASENAME"
+}
+
+# ==========================
+# Command passthrough
+# ==========================
+mc_command() {
+  local command="$*"
+  [ ! "$command" ] && log "[ERROR] No command" && return 1
+  server_running || { log "[ERROR] Server not running"; mc_tell red "Server not running"; return 1; }
+  mc_tell yellow "Command: $command"
+  local pre_len=$(wc -l "$LOGS_DIR/latest.log" | awk '{print $1}')
+  as_user "screen -p 0 -S ${SCREENNAME} -X stuff \"$command\015\""
+  sleep 0.2
+  tail -n $(( $(wc -l "$LOGS_DIR/latest.log"|awk '{print $1}') - pre_len )) "$LOGS_DIR/latest.log"
+}
+
+# ==========================
+# Log tail helper
+# ==========================
+mc_listen() {
+  server_running || { log "[ERROR] Server not running"; mc_tell red "Server not running"; return 1; }
+  mc_tell yellow "Streaming logs..."
+  tail -f "$LOGS_DIR/latest.log"
+}
+
+# ==========================
+# Main
+# ==========================
+case "$1" in
+  start) mc_start ;;
+  stop) mc_stop ;;
+  restart) mc_stop; mc_start ;;
+  backup) mc_backup ;;
+  rollback) mc_rollback ;;
+  status) server_running && echo "$SERVICE running" || echo "$SERVICE stopped" ;;
+  command) shift; mc_command "$*" ;;
+  listen) mc_listen ;;
+  *) echo "Usage: $0 {start|stop|backup|rollback|status|restart|command \"...\"|listen}"; exit 1 ;;
+esac
+
+exit 0
