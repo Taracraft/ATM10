@@ -24,6 +24,8 @@ Dieses Skript ist ein Init-Skript für einen Minecraft-Server (MC_ATM10). Es erm
 
 Alle Dateien, Backups und Logs werden in einem einstellbaren Minecraft-Pfad (`$MCPATH`) abgelegt.
 
+> 💡 Das Startskript befindet sich im Unterordner [`linux/MC_ATM10`](linux/MC_ATM10)
+
 ---
 
 ## Einstellungen ⚙️
@@ -32,7 +34,7 @@ Alle Dateien, Backups und Logs werden in einem einstellbaren Minecraft-Pfad (`$M
 
 | Variable        | Beschreibung |
 |-----------------|--------------|
-| `SERVICE`       | Name des Server-Startskripts oder der JAR-Datei (`startserver.sh`) |
+| `SERVICE`       | Name des Server-Startskripts oder der JAR-Datei (`MC_ATM10`) |
 | `SCREENNAME`    | Name der Screen-Session (`MC_ATM10`) |
 | `USERNAME`      | Linux-User unter dem der Server läuft (`mc`) |
 | `SERVER_NAME`   | Name, der in Ingame-Meldungen angezeigt wird (`Taracraft`) |
@@ -150,18 +152,17 @@ Alle Dateien, Backups und Logs werden in einem einstellbaren Minecraft-Pfad (`$M
 ---
 
 ## Shell-Befehle 🖱️
-<details>
-<summary>Alle Shell-Befehle anzeigen</summary>
+> Alle Befehle müssen vom Unterordner [`linux/MC_ATM10`](linux/MC_ATM10) ausgeführt werden
 
 <details>
 <summary>Server starten / stoppen 🚀</summary>
 
 | Befehl  | Beschreibung |
 |---------|--------------|
-| `start` | Startet den Server |
-| `stop`  | Stoppt den Server sauber |
-| `restart` | Stoppt und startet den Server |
-| `status` | Prüft, ob der Server läuft |
+| `./MC_ATM10 start` | Startet den Server |
+| `./MC_ATM10 stop`  | Stoppt den Server sauber |
+| `./MC_ATM10 restart` | Stoppt und startet den Server |
+| `./MC_ATM10 status` | Prüft, ob der Server läuft |
 
 </details>
 
@@ -170,20 +171,18 @@ Alle Dateien, Backups und Logs werden in einem einstellbaren Minecraft-Pfad (`$M
 
 | Befehl  | Beschreibung |
 |---------|--------------|
-| `backup` | Führt stündliches + tägliches Backup aus |
-| `rollback` | Interaktive Wiederherstellung eines Backups |
+| `./MC_ATM10 backup` | Führt stündliches + tägliches Backup aus |
+| `./MC_ATM10 rollback` | Interaktive Wiederherstellung eines Backups |
 
 </details>
 
 <details>
 <summary>Server-Kommandos 💬</summary>
 
-| Befehl          | Beschreibung |
-|-----------------|--------------|
-| `command "..."` | Sendet einen Befehl ingame |
-| `listen`        | Echtzeit-Tail der Serverlogs |
-
-</details>
+| Befehl                | Beschreibung |
+|-----------------------|--------------|
+| `./MC_ATM10 command "..."` | Sendet einen Befehl ingame |
+| `./MC_ATM10 listen`        | Echtzeit-Tail der Serverlogs |
 
 </details>
 
