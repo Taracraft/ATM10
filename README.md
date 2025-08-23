@@ -24,7 +24,7 @@ Dieses Skript ist ein Init-Skript für einen Minecraft-Server (MC_ATM10). Es erm
 
 Alle Dateien, Backups und Logs werden in einem einstellbaren Minecraft-Pfad (`$MCPATH`) abgelegt.
 
-> 💡 Das Startskript befindet sich im Unterordner [`linux/MC_ATM10`](linux/MC_ATM10)
+> 💡 Das Startskript befindet sich im Unterordner [`Linux/MC_ATM10`](Linux/MC_ATM10)
 
 ---
 
