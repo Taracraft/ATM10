@@ -1,156 +1,198 @@
-Was macht das Startskript?
+# Minecraft Server Startskript 🚀
 
-Version 1.5-Beta
+**Version:** 1.5-Beta
 
-1. Allgemeines
+## Inhaltsverzeichnis
+- [Allgemeines](#allgemeines)
+- [Einstellungen](#einstellungen)
+- [Funktionen](#funktionen)
+- [Shell-Befehle](#shell-befehle)
+- [Besondere Features](#besondere-features)
 
+---
+
+## Allgemeines 📝
 Dieses Skript ist ein Init-Skript für einen Minecraft-Server (MC_ATM10). Es ermöglicht:
 
-Starten, Stoppen und Neustarten des Servers
+- Starten, Stoppen und Neustarten des Servers  
+- Backup-Verwaltung (stündlich inkrementell, täglich Vollbackup)  
+- Rollback auf ein vorheriges Backup  
+- Senden von Befehlen an den Server  
+- Echtzeit-Anzeige der Serverlogs  
+- Logrotation für Debug- und Serverlogs  
+- Farbig formatierte Ingame-Meldungen  
 
-Backup-Verwaltung (stündlich inkrementell, täglich Vollbackup)
+Alle Dateien, Backups und Logs werden in einem einstellbaren Minecraft-Pfad (`$MCPATH`) abgelegt.
 
-Rollback auf ein vorheriges Backup
+---
 
-Senden von Befehlen an den Server
+## Einstellungen ⚙️
+<details>
+<summary>Server- und Benutzerinformationen</summary>
 
-Echtzeit-Anzeige der Serverlogs
+| Variable        | Beschreibung |
+|-----------------|--------------|
+| `SERVICE`       | Name des Server-Startskripts oder der JAR-Datei (`startserver.sh`) |
+| `SCREENNAME`    | Name der Screen-Session (`MC_ATM10`) |
+| `USERNAME`      | Linux-User unter dem der Server läuft (`mc`) |
+| `SERVER_NAME`   | Name, der in Ingame-Meldungen angezeigt wird (`Taracraft`) |
+| `WORLD`         | Name der Minecraft-Welt (`Tara`) |
+| `MCPATH`        | Root-Pfad des Servers (`/home/mc/ATM10/`) |
 
-Logrotation für Debug- und Serverlogs
+</details>
 
-Farbig formatierte Ingame-Meldungen
+<details>
+<summary>Backups 💾</summary>
 
-Alle Dateien, Backups und Logs werden in einem einstellbaren Minecraft-Pfad ($MCPATH) abgelegt.
+| Variable               | Beschreibung |
+|------------------------|--------------|
+| `BACKUPPATH_HOURLY`    | Pfad für stündliche Backups |
+| `BACKUPPATH_DAILY`     | Pfad für tägliche Backups |
 
-2. Einstellungen
+</details>
 
-Server- und Benutzerinformationen:
+<details>
+<summary>RAM / CPU 🖥️</summary>
 
-SERVICE: Name des Server-Startskripts oder der JAR-Datei (startserver.sh)
+- `MINHEAP`, `MAXHEAP`, `CPU_COUNT`
 
-SCREENNAME: Name der Screen-Session (MC_ATM10)
+</details>
 
-USERNAME: Linux-User unter dem der Server läuft (mc)
+<details>
+<summary>Logs & Logrotation 📂</summary>
 
-SERVER_NAME: Name, der in Ingame-Meldungen angezeigt wird (Taracraft)
+| Variable                     | Beschreibung |
+|-------------------------------|--------------|
+| `LOGS_DIR`                    | `$MCPATH/logs` |
+| `DEBUG_LOG`                   | `debug.log` im Minecraft-Log-Verzeichnis |
+| `DEBUG_LOG_RETENTION_DAYS`    | Alte Debug-Logs nach X Tagen löschen |
+| `SERVER_LOG_RETENTION_DAYS`   | Alte Server-Logs nach X Tagen löschen |
 
-WORLD: Name der Minecraft-Welt (Tara)
+</details>
 
-MCPATH: Root-Pfad des Servers (/home/mc/ATM10/)
+---
 
-Backups:
+## Funktionen ⚡
+<details>
+<summary>Alle Funktionen anzeigen</summary>
 
-BACKUPPATH_HOURLY: stündliche Backups
+### a) Helpers 🛠️
+- `log()`: schreibt sowohl in die Shell als auch optional in `debug.log`  
+- `as_user()`: führt Befehle als Minecraft-Benutzer aus  
+- `mc_tell(color, msg)`: sendet farbige Nachrichten an alle Spieler ingame  
+- `ensure_dir(path, label)`: prüft, ob ein Verzeichnis existiert, erstellbar und beschreibbar ist  
 
-BACKUPPATH_DAILY: tägliche Backups
+### b) Serververwaltung 🖥️
+- `mc_start()`: Startet den Server in einer Screen-Session  
+- `mc_stop()`: Stoppt den Server sauber, inkl. Countdown, speichert die Welt  
+- `mc_saveoff() / mc_saveon()`: Schaltet die Welt auf Read-Only bzw. wieder Read-Write  
 
-RAM / CPU:
+### c) Backups 💾
+<details>
+<summary>Stündlich (inkrementell) ⏰</summary>
 
-MINHEAP, MAXHEAP, CPU_COUNT
+- `mc_backup_hourly()`  
+  - Nutzt `tar --listed-incremental` mit Snapshot-Datei (`*.snar`)  
+  - Komprimiert mit `gzip`  
+  - Alte Backups >24h werden gelöscht  
+  - Meldungen ingame und in Shell
 
-Logs & Logrotation:
+</details>
 
-LOGS_DIR: $MCPATH/logs
+<details>
+<summary>Täglich (Vollbackup) 📅</summary>
 
-DEBUG_LOG: debug.log im Minecraft-Log-Verzeichnis
+- `mc_backup_daily()`  
+  - Vollbackup der Welt + Serverdateien  
+  - Komprimiert mit `gzip`  
+  - Alte Backups >30 Tage werden gelöscht  
+  - Meldungen ingame und in Shell
 
-DEBUG_LOG_RETENTION_DAYS: alte Debug-Logs nach X Tagen löschen
+</details>
 
-SERVER_LOG_RETENTION_DAYS: alte Server-Logs nach X Tagen löschen
+<details>
+<summary>Backup Wrapper 🔄</summary>
 
-3. Funktionen
-a) Helpers
+- `mc_backup()`: führt Logrotation durch (`rotate_logs`), stündliches Backup, prüft tägliches Backup
 
-log(): schreibt sowohl in die Shell als auch optional in debug.log.
+</details>
 
-as_user(): führt Befehle als Minecraft-Benutzer aus.
+### d) Rollback ↩️
+<details>
+<summary>Rollback-Funktion</summary>
 
-mc_tell(color, msg): sendet farbige Nachrichten an alle Spieler ingame.
+- `mc_rollback()`: interaktive Auswahl des Backups  
+  - Stoppt Server, entpackt Backup, startet Server wieder  
+  - Meldungen ingame und in Shell
 
-ensure_dir(path, label): prüft, ob ein Verzeichnis existiert, erstellbar und beschreibbar ist.
+</details>
 
-b) Serververwaltung
+### e) Logrotation 📂
+<details>
+<summary>Logs rotieren</summary>
 
-mc_start(): Startet den Server in einer Screen-Session. Meldet Erfolg/Fehler in Shell und ingame.
+- `rotate_logs()`: komprimiert `debug.log` und alle `.log` im Minecraft-Log-Verzeichnis nach Datum (`YYYY-MM-DD.log.gz`)  
+- Alte Logs werden automatisch nach konfigurierten Tagen gelöscht
 
-mc_stop(): Stoppt den Server sauber, inklusive Countdown (Minuten + Sekunden), speichert Welt.
+</details>
 
-mc_saveoff() / mc_saveon(): Schaltet die Welt auf Read-Only bzw. wieder Read-Write, z. B. für Backups.
+### f) Server-Kommandos 💬
+<details>
+<summary>Server-Kommandos</summary>
 
-c) Backups
+- `mc_command("command")`: sendet Befehle an die Screen-Session (`/say Hello`)  
+- `mc_listen()`: Echtzeit-Tail der `latest.log`
 
-Stündlich (inkrementell):
+</details>
 
-mc_backup_hourly()
+</details>
 
-Nutzt tar --listed-incremental mit Snapshot-Datei (*.snar), um nur Änderungen zu sichern.
+---
 
-Komprimiert mit gzip.
+## Shell-Befehle 🖱️
+<details>
+<summary>Alle Shell-Befehle anzeigen</summary>
 
-Alte Backups >24h werden gelöscht.
+<details>
+<summary>Server starten / stoppen 🚀</summary>
 
-Meldungen werden ingame und in Shell angezeigt.
+| Befehl  | Beschreibung |
+|---------|--------------|
+| `start` | Startet den Server |
+| `stop`  | Stoppt den Server sauber |
+| `restart` | Stoppt und startet den Server |
+| `status` | Prüft, ob der Server läuft |
 
-Täglich (Vollbackup):
+</details>
 
-mc_backup_daily()
+<details>
+<summary>Backups 💾</summary>
 
-Vollbackup der Welt + Serverdateien
+| Befehl  | Beschreibung |
+|---------|--------------|
+| `backup` | Führt stündliches + tägliches Backup aus |
+| `rollback` | Interaktive Wiederherstellung eines Backups |
 
-Komprimiert mit gzip.
+</details>
 
-Alte Backups >30 Tage werden gelöscht.
+<details>
+<summary>Server-Kommandos 💬</summary>
 
-Meldungen wie bei stündlichen Backups.
+| Befehl          | Beschreibung |
+|-----------------|--------------|
+| `command "..."` | Sendet einen Befehl ingame |
+| `listen`        | Echtzeit-Tail der Serverlogs |
 
-Backup Wrapper:
+</details>
 
-mc_backup(): führt Rotation der Logs durch (rotate_logs), dann stündliches Backup, prüft, ob tägliches Backup nötig ist.
+</details>
 
-d) Rollback
+---
 
-mc_rollback(): interaktive Auswahl, welche Backup-Version wiederhergestellt werden soll.
-
-Wählt zwischen stündlich (inkrementell) und täglich (voll).
-
-Stoppt den Server, entpackt das Backup, startet den Server wieder.
-
-Meldungen werden ingame und in Shell angezeigt.
-
-e) Logrotation
-
-rotate_logs():
-
-Komprimiert debug.log und alle .log im Minecraft-Log-Verzeichnis nach Datum (YYYY-MM-DD.log.gz).
-
-Alte Logs werden nach konfigurierten Tagen automatisch gelöscht.
-
-f) Server-Kommandos
-
-mc_command("command"): sendet Befehle an die Screen-Session des Servers, z. B. /say Hello.
-
-mc_listen(): Echtzeit-Tail der latest.log im Minecraft-Logverzeichnis.
-
-4. Shell-Befehle / Bedienung
-Shell-Befehl	Beschreibung
-start	Startet den Server
-stop	Stoppt den Server sauber
-restart	Stoppt und startet den Server
-backup	Führt stündliches + tägliches Backup aus
-rollback	Interaktive Wiederherstellung eines Backups
-status	Prüft, ob der Server läuft
-command "..."	Sendet einen Befehl ingame
-listen	Echtzeit-Tail der Serverlogs
-5. Besondere Features
-
-Farbiges Ingame-Feedback für Backups, Rollback, Shutdown, Server-Kommandos.
-
-Automatische Logrotation inkl. Kompression.
-
-Inkrementelle stündliche Backups sparen Speicherplatz.
-
-Vollständige tägliche Backups gewährleisten Sicherheit.
-
-Rollback-Funktion stellt sowohl stündliche als auch tägliche Backups wieder her.
-
-Shell + ingame Logging parallel.
+## Besondere Features 🌟
+- Farbiges Ingame-Feedback für Backups, Rollback, Shutdown, Server-Kommandos  
+- Automatische Logrotation inkl. Kompression  
+- Inkrementelle stündliche Backups sparen Speicherplatz  
+- Vollständige tägliche Backups gewährleisten Sicherheit  
+- Rollback-Funktion stellt sowohl stündliche als auch tägliche Backups wieder her  
+- Shell + ingame Logging parallel
