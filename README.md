@@ -154,7 +154,7 @@ Dieses Skript ist ein Init-Skript für einen Minecraft-Server (MC_ATM10). Es erm
 ---
 
 ## Shell-Befehle 🖱️
-> Alle Befehle müssen vom Unterordner [`etc/init.d/MC_ATM10`](etc/init.d/MC_ATM10) ausgeführt werden
+> Alle Befehle müssen vom Unterordner [`/etc/init.d/MC_ATM10`](/etc/init.d/MC_ATM10) ausgeführt werden
 
 <details>
 <summary>Server starten / stoppen 🚀</summary>
