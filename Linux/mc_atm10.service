@@ -1,0 +1,28 @@
+[Unit]
+Description=Minecraft Server ATM10
+After=network.target
+Wants=network.target
+
+[Service]
+User=mc
+Group=mc
+WorkingDirectory=/home/mc/ATM10
+# Startet den Server via Startskript
+ExecStart=/home/mc/ATM10/MC_ATM10 start
+# Sauberes Stoppen des Servers
+ExecStop=/home/mc/ATM10/MC_ATM10 stop
+# Restart bei Absturz
+Restart=on-failure
+RestartSec=10
+# KillMode=none, damit Screen sauber stoppen kann
+KillMode=none
+# Logs gehen ins Journal
+StandardOutput=journal
+StandardError=journal
+# Optional: Limit fÃ¼r Speicher/CPU
+#MemoryMax=16G
+#CPUQuota=80%
+
+[Install]
+WantedBy=multi-user.target
+
