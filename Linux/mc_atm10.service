@@ -3,24 +3,17 @@ Description=Minecraft Server ATM10
 After=network.target
 
 [Service]
-# Minecraft lÃ¤uft als Benutzer "mc"
+Type=forking
 User=mc
 Group=mc
 WorkingDirectory=/home/mc/ATM10
 
-# Startbefehl â€” direkt das startserver.sh Skript
-ExecStart=/home/mc/ATM10/startserver.sh
-ExecStop=/bin/kill -SIGTERM $MAINPID
+ExecStart=/usr/bin/screen -dmS MC_ATM10 /home/mc/ATM10/startserver.sh
+ExecStop=/usr/bin/screen -S MC_ATM10 -X stuff "stop$(printf \\r)"
+ExecStopPost=/bin/sleep 10
 
-# Neustart bei Absturz
 Restart=on-failure
 RestartSec=10
-
-# Ressourcenlimits (optional)
-LimitNOFILE=65535
-
-# Java braucht oft viel Speicher, hier 10 GB Limit, passe an falls nÃ¶tig
-MemoryMax=10G
 
 [Install]
 WantedBy=multi-user.target
