@@ -157,7 +157,8 @@ mc_start() {
 mc_stop() {
   if server_running; then
     for i in 10 5 1; do mc_tell yellow "Shutdown in $i minutes"; sleep $((i*60)); done
-    for i in 30 10 9 8 7 6 5 4 3 2 1; do mc_tell yellow "Shutdown in $i seconds"; sleep 1; done
+    for i in 30; do mc_tell yellow "Shutdown in $i seconds"; sleep 20; done
+    for i in 10 9 8 7 6 5 4 3 2 1; do mc_tell yellow "Shutdown in $i seconds"; sleep 1; done
     mc_tell yellow "Saving world..."
     as_user "screen -p 0 -S ${SCREENNAME} -X stuff \"save-all\015\""
     sleep 1
